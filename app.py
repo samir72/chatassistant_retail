@@ -20,10 +20,12 @@ logger = logging.getLogger(__name__)
 
 logger.info("Starting Retail Inventory Assistant on HuggingFace Spaces")
 
-from chatassistant_retail.ui import create_gradio_interface
+# from chatassistant_retail.ui import create_gradio_interface
+from chatassistant_retail.ui import gradio_app
 
 # Create and launch interface
-demo = create_gradio_interface()
+#demo = create_gradio_interface()
+demo = gradio_app.create_gradio_interface()
 
 if __name__ == "__main__":
     # For HF Spaces, use 0.0.0.0 to accept external connections
