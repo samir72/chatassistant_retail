@@ -1,7 +1,7 @@
 # From https://github.com/github/gitignore/blob/main/Python.gitignore 2025-07-30
 
-# Data folder - contains large sample files (products, sales history, POs)
-data/
+# Data folder - now tracked in version control for convenient setup
+# data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
