@@ -1,0 +1,100 @@
+[project]
+name = "chatassistant_retail"
+version = "0.1.0"
+description = "Retail Inventory Assistant"
+readme = "README.md"
+authors = [
+  {name = "Sayed A Rizvi", email = "s_amir_72@yahoo.com"}
+]
+maintainers = [
+  {name = "Sayed A Rizvi", email = "s_amir_72@yahoo.com"}
+]
+classifiers = [
+    # TODO
+]
+license = {text = "MIT"}
+dependencies = [
+  "gradio>=4.0.0",
+  "openai>=1.10.0",
+  "azure-search-documents>=11.4.0",
+  "azure-identity>=1.15.0",
+  "langgraph>=0.2.0",
+  "langchain>=0.3.0",
+  "langchain-openai>=0.2.0",
+  "mcp>=0.9.0",
+  "fastmcp>=0.2.0",
+  "langfuse>=2.0.0",
+  "pydantic>=2.0.0",
+  "pydantic-settings>=2.0.0",
+  "python-dotenv>=1.0.0",
+  "psycopg2-binary>=2.9.9",
+  "redis>=5.0.0",
+  "sqlalchemy>=2.0.0",
+  "faker>=20.0.0",
+  "pillow>=10.0.0",
+  "numpy>=1.24.0",
+  "pandas>=2.0.0",
+  "rich>=13.0.0",
+]
+requires-python = ">= 3.10"
+
+[project.optional-dependencies]
+dev = [
+    "coverage",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-mock",
+    "ruff",
+    "ty",
+    "ipdb",
+    "httpx",
+]
+hf-spaces = [
+    "gradio>=4.0.0",
+    "openai>=1.10.0",
+    "azure-search-documents>=11.4.0",
+    "azure-identity>=1.15.0",
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "mcp>=0.9.0",
+    "fastmcp>=0.2.0",
+    "langfuse>=2.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "faker>=20.0.0",
+    "pillow>=10.0.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "rich>=13.0.0",
+]
+
+[project.urls]
+bugs = "https://github.com/samir72/chatassistant_retail/issues"
+changelog = "https://github.com/samir72/chatassistant_retail/blob/master/changelog.md"
+homepage = "https://github.com/samir72/chatassistant_retail"
+
+[project.scripts]
+chatassistant-retail = "chatassistant_retail.__main__:main"
+
+[tool.ty]
+# All rules are enabled as "error" by default; no need to specify unless overriding.
+# Example override: relax a rule for the entire project (uncomment if needed).
+# rules.TY015 = "warn"  # For invalid-argument-type, warn instead of error.
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+
+[tool.uv]
+package = true
