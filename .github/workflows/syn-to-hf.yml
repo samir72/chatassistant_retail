@@ -1,0 +1,21 @@
+name: Sync to Hugging Face hub
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for accurate sync
+          lfs: true       # Enable LFS if using large files
+
+      - name: Push to hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: git push https://samir72:$HF_TOKEN@huggingface.co/spaces/samir72/chatassistant_retail main
