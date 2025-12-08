@@ -1,6 +1,3 @@
-# Install the chatassistant_retail package from current directory
-.
-
 gradio>=4.0.0
 openai>=1.10.0
 azure-search-documents>=11.4.0

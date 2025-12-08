@@ -7,6 +7,14 @@ For local deployment, use: python -m chatassistant_retail
 
 import logging
 import os
+import sys
+from pathlib import Path
+
+# Add src directory to Python path for HuggingFace Spaces deployment
+# This allows imports to work without installing the package
+src_path = Path(__file__).parent / "src"
+if src_path.exists() and str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 # Set deployment mode for HF Spaces
 os.environ["DEPLOYMENT_MODE"] = "hf_spaces"
