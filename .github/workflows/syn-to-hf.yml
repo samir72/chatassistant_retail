@@ -1,4 +1,4 @@
-name: Sync to Hugging Face hub
+name: Sync to Hugging Face Spaces
 
 on:
   push:
@@ -7,15 +7,20 @@ on:
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
-  sync-to-hub:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync with Hugging Face Hub
-        uses: nateraw/huggingface-sync-action@v0.0.5
+      - name: Checkout Repository
+        uses: actions/checkout@v4  # Updated to latest
+
+      # Optional: Remove any HF-blocked files (e.g., >10MB without LFS, or disallowed types like .exe)
+      # - name: Remove bad files
+      #   run: rm -rf path/to/bad/files  # Uncomment and customize if needed
+
+      - name: Sync to Hugging Face Spaces
+        uses: JacobLinCool/huggingface-sync@v1
         with:
-          github_repo_id: 'samir72/chatassistant_retail'
-          huggingface_repo_id: 'samir72/chatassistant_retail'
-          hf_token: ${{ secrets.HF_TOKEN }}
-          repo_type: 'space'
-          space_sdk: 'gradio'  # Change to 'streamlit', 'static', etc., if applicable; optional
-          subdirectory: ''     # Optional: sync only a subfolder (leave empty for full repo)
+          github: ${{ secrets.GITHUB_TOKEN }}  # Default; handles checkout auth
+          user: samir72                       # Your HF username
+          space: chatassistant_retail         # Your Space name
+          token: ${{ secrets.HF_TOKEN }}      # Your HF write token (already set up)
