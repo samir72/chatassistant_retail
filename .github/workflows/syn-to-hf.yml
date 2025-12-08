@@ -10,12 +10,12 @@ jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Sync with Hugging Face Hub
+        uses: nateraw/huggingface-sync-action@v0.0.5
         with:
-          fetch-depth: 0  # Fetch full history for accurate sync
-          lfs: true       # Enable LFS if using large files
-
-      - name: Push to hub
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push https://samir72:$HF_TOKEN@huggingface.co/spaces/samir72/chatassistant_retail main
+          github_repo_id: 'samir72/chatassistant_retail'
+          huggingface_repo_id: 'samir72/chatassistant_retail'
+          hf_token: ${{ secrets.HF_TOKEN }}
+          repo_type: 'space'
+          space_sdk: 'gradio'  # Change to 'streamlit', 'static', etc., if applicable; optional
+          subdirectory: ''     # Optional: sync only a subfolder (leave empty for full repo)
