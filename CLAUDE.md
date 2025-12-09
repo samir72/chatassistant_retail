@@ -328,3 +328,75 @@ validation = client.validate_index_schema(expected_embedding_dimensions=1536)
 if not validation['valid']:
     logger.error(f"Schema mismatch: {validation['field_differences']}")
 ```
+
+## HuggingFace Spaces Deployment
+
+### sys.path Workaround for Src-Layout
+
+The project uses a **sys.path manipulation workaround** in `app.py` for HuggingFace Spaces deployment:
+
+```python
+# Add src directory to Python path for HuggingFace Spaces deployment
+src_path = Path(__file__).parent / "src"
+if src_path.exists() and str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+```
+
+**Why this is needed:**
+
+1. HuggingFace Spaces uses an auto-generated Dockerfile for Gradio SDK apps
+2. The Dockerfile mounts `requirements.txt` during the pip install step
+3. At that point, `pyproject.toml` is not yet copied into the container
+4. Standard package installation (`pip install .`) fails with "Directory '.' is not installable"
+
+**Solution:**
+
+- Remove `.` from `requirements.txt` (no package self-installation)
+- Add `src/` directory to Python path at runtime in `app.py`
+- Imports work without formal package installation
+
+**Trade-offs:**
+
+✅ Works with HF Spaces' Docker build process
+✅ Doesn't break local development (path added conditionally)
+⚠️ Less "proper" than formal package installation
+⚠️ Package metadata not available at runtime
+
+**For local development:**
+
+Continue using the standard approach:
+
+```bash
+pip install -e .
+```
+
+The sys.path workaround is harmless when the package is already installed.
+
+### Automatic Sync from GitHub
+
+The project automatically syncs to HuggingFace Spaces via GitHub Actions:
+
+**Workflow:** `.github/workflows/syn-to-hf.yml`
+- Uses `JacobLinCool/huggingface-sync@v1` action
+- Triggered on push to main branch or manual workflow_dispatch
+- Requires `HF_TOKEN` secret configured in GitHub repository settings
+
+## Sample Data Now Tracked
+
+As of December 8, 2025, sample data files are **tracked in version control**:
+
+| File | Size | Status |
+|------|------|--------|
+| `data/products.json` | 220 KB | Tracked |
+| `data/sales_history.json` | 3.6 MB | Tracked |
+| `data/purchase_orders.json` | 1.3 KB | Tracked |
+
+**Previous behavior:** Data folder was excluded via `.gitignore` to keep repository lean.
+
+**Current behavior:** Sample data included for convenient setup. Users can still regenerate data using:
+
+```bash
+python scripts/generate_sample_data.py
+```
+
+**Rationale:** New developers can clone and run immediately without data generation step.

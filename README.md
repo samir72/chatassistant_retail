@@ -366,6 +366,38 @@ pip install chatassistant_retail
 
 ---
 
+## Sample Data
+
+The repository includes **sample data files** for immediate testing and development:
+
+| File | Size | Description |
+|------|------|-------------|
+| `data/products.json` | 220 KB | 500+ sample products across 8 retail categories (Electronics, Clothing, Groceries, etc.) |
+| `data/sales_history.json` | 3.6 MB | 6 months of sales transaction history with seasonal patterns |
+| `data/purchase_orders.json` | 1.3 KB | Sample purchase orders (pending/fulfilled statuses) |
+
+**Total size:** ~3.7 MB
+
+### Why Sample Data is Included
+
+Previously, the `data/` directory was excluded from version control to keep the repository lean. As of version 0.1.1, sample data is **included by default** for:
+
+- ✅ Faster setup for new developers
+- ✅ Consistent test data across environments
+- ✅ No need to run data generation scripts initially
+
+### Regenerating Sample Data (Optional)
+
+If you want to regenerate or customize sample data:
+
+```bash
+python scripts/generate_sample_data.py
+```
+
+This will create fresh sample data with configurable parameters.
+
+---
+
 ## Usage
 
 ### Setting Up Azure Cognitive Search
@@ -1041,6 +1073,16 @@ The `app.py` file is pre-configured for HF Spaces deployment:
 # app.py sets deployment mode automatically
 os.environ["DEPLOYMENT_MODE"] = "hf_spaces"
 ```
+
+**Important: src-layout Workaround**
+
+Due to HuggingFace Spaces' Docker build process, this project uses a **sys.path manipulation workaround** instead of standard package installation:
+
+- `requirements.txt` installs only dependencies (no package self-installation via `.`)
+- `app.py` adds `src/` directory to Python path at startup
+- Imports work without formal package installation
+
+This is intentional and necessary because HF Spaces' auto-generated Dockerfile mounts `requirements.txt` before copying `pyproject.toml`, preventing standard `pip install .` from working. For local development, continue using `pip install -e .` as normal.
 
 **Environment Variables (HF Spaces Secrets):**
 ```bash
