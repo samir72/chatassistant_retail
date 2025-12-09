@@ -74,10 +74,10 @@ The chatbot follows an agentic architecture pattern using LangGraph for state ma
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                  Gradio Web Interface                    │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │  Chat UI    │  │  Metrics     │  │  Session      │  │
-│  │             │  │  Dashboard   │  │  Management   │  │
-│  └─────────────┘  └──────────────┘  └───────────────┘  │
+│  ┌─────────────┐                      ┌───────────────┐  │
+│  │  Chat UI    │                      │  Session      │  │
+│  │             │                      │  Management   │  │
+│  └─────────────┘                      └───────────────┘  │
 └────────────────────────┬────────────────────────────────┘
                          │
 ┌────────────────────────▼────────────────────────────────┐
@@ -115,7 +115,7 @@ The chatbot follows an agentic architecture pattern using LangGraph for state ma
 
 ### Key Components
 
-- **Gradio UI** (`ui/`): Web-based chat interface with multi-modal input (text + images) and metrics dashboard
+- **Gradio UI** (`ui/`): Web-based chat interface with multi-modal input (text + images)
 - **LangGraph State Manager** (`state/`): Conversation state management with Memory/Redis/PostgreSQL session stores
 - **Azure OpenAI Client** (`llm/`): Multi-modal LLM integration (GPT-4o-mini) with prompt templates and response parsing
 - **Tools** (`tools/`): Inventory and purchase order tools exposed via MCP (Model Context Protocol) server
@@ -152,7 +152,7 @@ chatassistant_retail/
 │       │   ├── __init__.py
 │       │   ├── gradio_app.py     # Main Gradio application
 │       │   ├── chat_interface.py # Chat UI components
-│       │   └── metrics_dashboard.py  # Observability dashboard
+│       │   └── metrics_dashboard.py  # Observability dashboard (UI currently disabled)
 │       │
 │       ├── state/                # LangGraph state management
 │       │   ├── __init__.py
@@ -242,7 +242,7 @@ chatassistant_retail/
 ### Key Directories
 
 - **app.py**: HuggingFace Spaces entry point (sets deployment mode and launches Gradio on 0.0.0.0:7860)
-- **ui/**: Gradio-based web interface with multi-modal chat and metrics dashboard
+- **ui/**: Gradio-based web interface with multi-modal chat
 - **state/**: LangGraph state machine with three session backends (Memory/Redis/PostgreSQL)
 - **llm/**: Azure OpenAI integration (GPT-4o-mini) with prompt engineering and multi-modal support
 - **tools/**: Inventory and purchase order tools with MCP server integration
@@ -459,8 +459,7 @@ chatassistant-retail --port 7860
 ```
 
 The web interface will be available at `http://localhost:7860` with:
-- **Chat Interface**: Main conversational UI
-- **Metrics Dashboard**: LangFuse observability metrics
+- **Chat Interface**: Main conversational UI with multi-modal support (text + images)
 
 #### Command-Line Usage
 
@@ -962,16 +961,13 @@ finally:
 
 ### Metrics Dashboard
 
-The Gradio UI includes a real-time metrics dashboard showing:
+**Status:** The Gradio UI metrics dashboard is currently disabled.
 
-- **Total Queries**: Number of chat interactions
-- **Average Response Time**: Mean latency across all requests
-- **Tool Calls**: Count of inventory/PO tool invocations
-- **Error Rate**: Percentage of failed requests
-- **Success Rate**: Percentage of successful completions
-- **Recent Activity**: Timeline of recent conversations
+**Access Metrics:**
+- **LangFuse Web Dashboard:** https://cloud.langfuse.com (recommended for production monitoring)
+- **Programmatic Access:** Use the `MetricsCollector` class directly (see Metrics Collection section below)
 
-Access the dashboard at: `http://localhost:7860` (Metrics tab)
+All observability infrastructure remains active. The `MetricsCollector` class continues to aggregate data from LangFuse traces for programmatic access.
 
 ### Metrics Collection
 

@@ -37,6 +37,23 @@ HuggingFace Spaces' auto-generated Dockerfile mounts requirements.txt before cop
 - Changed from direct import to module-based import: `gradio_app.create_gradio_interface()`
 - Improved module organization in chatassistant_retail.ui package
 
+### Metrics Dashboard UI Disabled
+
+**Temporarily disabled Gradio metrics dashboard UI** (commit TBD):
+- Commented out metrics dashboard imports in gradio_app.py (lines 15-20)
+- Disabled metrics UI components (lines 179-217)
+- Removed metrics refresh event handlers (lines 238-242, 258-262)
+
+**Backend Status:** The observability infrastructure remains fully functional:
+- ✅ LangFuse tracing active
+- ✅ MetricsCollector class operational
+- ✅ @trace decorator working
+- ✅ Programmatic metrics access available
+
+**Rationale:** Streamlined UI to focus on core chat functionality. Metrics remain accessible via LangFuse web dashboard and programmatic API.
+
+**Future Plans:** Dashboard may be re-enabled in a future release with enhanced features.
+
 ## 0.1.0 (2025-12-05)
 
 * First release on PyPI.

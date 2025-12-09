@@ -12,11 +12,12 @@ from chatassistant_retail.ui.chat_interface import (
     format_error_message,
     get_welcome_message,
 )
-from chatassistant_retail.ui.metrics_dashboard import (
-    format_activity_log,
-    format_metrics_for_display,
-    get_empty_metrics,
-)
+# Metrics imports commented out - keeping backend code for future re-enablement
+# from chatassistant_retail.ui.metrics_dashboard import (
+#     format_activity_log,
+#     format_metrics_for_display,
+#     get_empty_metrics,
+# )
 
 logger = logging.getLogger(__name__)
 
@@ -127,8 +128,8 @@ def create_gradio_interface():
         session_id_state = gr.State(value=None)
 
         with gr.Row():
-            # Left column: Chat interface
-            with gr.Column(scale=2):
+            # Chat interface (full width - metrics section commented out)
+            with gr.Column(scale=1):
                 gr.Markdown("## 💬 Chat")
 
                 chatbot = gr.Chatbot(
@@ -175,44 +176,45 @@ def create_gradio_interface():
                         btn = gr.Button(example, size="sm")
                         example_buttons.append((btn, example))
 
-            # Right column: Metrics dashboard
-            with gr.Column(scale=1):
-                gr.Markdown("## 📊 Metrics")
-
-                with gr.Row():
-                    total_queries = gr.Number(
-                        label="Total Queries",
-                        value=0,
-                        interactive=False,
-                    )
-                    avg_response_time = gr.Number(
-                        label="Avg Response (s)",
-                        value=0.0,
-                        precision=3,
-                        interactive=False,
-                    )
-
-                with gr.Row():
-                    tool_calls = gr.Number(
-                        label="Tool Calls",
-                        value=0,
-                        interactive=False,
-                    )
-                    success_rate = gr.Number(
-                        label="Success Rate (%)",
-                        value=100.0,
-                        precision=1,
-                        interactive=False,
-                    )
-
-                gr.Markdown("### 📝 Recent Activity")
-                activity_log = gr.Dataframe(
-                    headers=["Time", "Action", "Status"],
-                    value=[["No activity yet", "", ""]],
-                    interactive=False,
-                )
-
-                refresh_btn = gr.Button("🔄 Refresh Metrics", size="sm")
+            # Metrics dashboard - COMMENTED OUT (keeping backend code for future re-enablement)
+            # To re-enable: uncomment this block, change chat column to scale=2, and uncomment event handlers below
+            # with gr.Column(scale=1):
+            #     gr.Markdown("## 📊 Metrics")
+            #
+            #     with gr.Row():
+            #         total_queries = gr.Number(
+            #             label="Total Queries",
+            #             value=0,
+            #             interactive=False,
+            #         )
+            #         avg_response_time = gr.Number(
+            #             label="Avg Response (s)",
+            #             value=0.0,
+            #             precision=3,
+            #             interactive=False,
+            #         )
+            #
+            #     with gr.Row():
+            #         tool_calls = gr.Number(
+            #             label="Tool Calls",
+            #             value=0,
+            #             interactive=False,
+            #         )
+            #         success_rate = gr.Number(
+            #             label="Success Rate (%)",
+            #             value=100.0,
+            #             precision=1,
+            #             interactive=False,
+            #         )
+            #
+            #     gr.Markdown("### 📝 Recent Activity")
+            #     activity_log = gr.Dataframe(
+            #         headers=["Time", "Action", "Status"],
+            #         value=[["No activity yet", "", ""]],
+            #         interactive=False,
+            #     )
+            #
+            #     refresh_btn = gr.Button("🔄 Refresh Metrics", size="sm")
 
         # Event handlers
         send_btn.click(
@@ -233,10 +235,11 @@ def create_gradio_interface():
             outputs=[chatbot, session_id_state, context_display],
         )
 
-        refresh_btn.click(
-            fn=refresh_metrics,
-            outputs=[total_queries, avg_response_time, tool_calls, success_rate, activity_log],
-        )
+        # Metrics refresh handler - COMMENTED OUT
+        # refresh_btn.click(
+        #     fn=refresh_metrics,
+        #     outputs=[total_queries, avg_response_time, tool_calls, success_rate, activity_log],
+        # )
 
         # Example buttons
         for btn, example in example_buttons:
@@ -252,11 +255,11 @@ def create_gradio_interface():
             outputs=[chatbot],
         )
 
-        # Initial metrics load
-        demo.load(
-            fn=refresh_metrics,
-            outputs=[total_queries, avg_response_time, tool_calls, success_rate, activity_log],
-        )
+        # Initial metrics load - COMMENTED OUT
+        # demo.load(
+        #     fn=refresh_metrics,
+        #     outputs=[total_queries, avg_response_time, tool_calls, success_rate, activity_log],
+        # )
 
     return demo
 
