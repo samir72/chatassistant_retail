@@ -209,7 +209,7 @@ class AzureSearchClient:
             raise ValueError("Number of products must match number of embeddings")
 
         documents = []
-        for product, embedding in zip(products, embeddings):
+        for product, embedding in zip(products, embeddings, strict=True):
             doc = {
                 "id": product.sku,
                 "sku": product.sku,
@@ -229,7 +229,7 @@ class AzureSearchClient:
             batch_size = 100
             for i in range(0, len(documents), batch_size):
                 batch = documents[i : i + batch_size]
-                result = self.search_client.upload_documents(documents=batch)
+                self.search_client.upload_documents(documents=batch)
                 logger.info(f"Indexed batch {i // batch_size + 1}: {len(batch)} products")
 
             logger.info(f"Successfully indexed {len(products)} products")
@@ -406,6 +406,193 @@ class AzureSearchClient:
         except Exception as e:
             logger.warning(f"Product not found: {sku} - {e}")
             return None
+
+    async def get_all_documents(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+        """
+        Retrieve all documents from the Azure Search index with pagination.
+
+        Args:
+            batch_size: Number of documents to fetch per request (max 1000)
+
+        Returns:
+            List of all documents in the index
+        """
+        if not self.enabled:
+            logger.warning("Azure Search not enabled. Cannot retrieve documents.")
+            return []
+
+        all_documents = []
+        skip = 0
+
+        try:
+            while True:
+                # Use minimal select fields for comparison (exclude content_vector to reduce transfer size)
+                results = self.search_client.search(
+                    search_text="*",
+                    top=batch_size,
+                    skip=skip,
+                    select=[
+                        "sku",
+                        "name",
+                        "category",
+                        "description",
+                        "price",
+                        "current_stock",
+                        "reorder_level",
+                        "supplier",
+                    ],
+                )
+
+                batch = list(results)
+                if not batch:
+                    break
+
+                all_documents.extend([dict(doc) for doc in batch])
+                skip += len(batch)
+
+                if len(batch) < batch_size:
+                    break  # No more pages
+
+            logger.info(f"Retrieved {len(all_documents)} documents from index")
+            return all_documents
+
+        except Exception as e:
+            logger.error(f"Error retrieving documents: {e}")
+            return []
+
+    async def delete_products_by_sku(self, skus: list[str]) -> dict[str, Any]:
+        """
+        Delete multiple products from the index by SKU.
+
+        Args:
+            skus: List of product SKUs to delete
+
+        Returns:
+            Dictionary with deletion results:
+            {
+                "total": int,
+                "succeeded": int,
+                "failed": int,
+                "errors": list[str]
+            }
+        """
+        if not self.enabled:
+            logger.warning("Azure Search not enabled. Cannot delete products.")
+            return {"total": 0, "succeeded": 0, "failed": 0, "errors": []}
+
+        if not skus:
+            return {"total": 0, "succeeded": 0, "failed": 0, "errors": []}
+
+        # Prepare documents for deletion (only need key field)
+        documents = [{"id": sku} for sku in skus]
+
+        total = len(documents)
+        succeeded = 0
+        failed = 0
+        errors = []
+
+        try:
+            # Delete in batches of 100
+            batch_size = 100
+            for i in range(0, len(documents), batch_size):
+                batch = documents[i : i + batch_size]
+                try:
+                    results = self.search_client.delete_documents(documents=batch)
+
+                    for result in results:
+                        if result.succeeded:
+                            succeeded += 1
+                        else:
+                            failed += 1
+                            errors.append(f"SKU {result.key}: {result.error_message}")
+
+                    logger.info(f"Deleted batch {i // batch_size + 1}: {len(batch)} products")
+
+                except Exception as e:
+                    failed += len(batch)
+                    errors.append(f"Batch {i // batch_size + 1} failed: {str(e)}")
+                    logger.error(f"Error deleting batch: {e}")
+
+        except Exception as e:
+            logger.error(f"Error during deletion: {e}")
+            errors.append(f"Deletion failed: {str(e)}")
+
+        return {"total": total, "succeeded": succeeded, "failed": failed, "errors": errors}
+
+    async def upsert_products(self, products: list[Product], embeddings: list[list[float]]) -> dict[str, Any]:
+        """
+        Insert or update products in the Azure Search index.
+        Uses merge-or-upload: creates new documents or updates existing ones.
+
+        Args:
+            products: List of Product instances
+            embeddings: List of embedding vectors (same length as products)
+
+        Returns:
+            Dictionary with upsert results:
+            {
+                "total": int,
+                "succeeded": int,
+                "failed": int,
+                "errors": list[str]
+            }
+        """
+        if not self.enabled:
+            logger.warning("Azure Search not enabled. Cannot upsert products.")
+            return {"total": 0, "succeeded": 0, "failed": 0, "errors": []}
+
+        if len(products) != len(embeddings):
+            raise ValueError("Number of products must match number of embeddings")
+
+        # Prepare documents
+        documents = []
+        for product, embedding in zip(products, embeddings, strict=True):
+            doc = {
+                "id": product.sku,
+                "sku": product.sku,
+                "name": product.name,
+                "category": product.category,
+                "description": product.description,
+                "price": product.price,
+                "current_stock": product.current_stock,
+                "reorder_level": product.reorder_level,
+                "supplier": product.supplier,
+                "content_vector": embedding,
+            }
+            documents.append(doc)
+
+        total = len(documents)
+        succeeded = 0
+        failed = 0
+        errors = []
+
+        try:
+            # Upload in batches of 100
+            batch_size = 100
+            for i in range(0, len(documents), batch_size):
+                batch = documents[i : i + batch_size]
+                try:
+                    results = self.search_client.merge_or_upload_documents(documents=batch)
+
+                    for result in results:
+                        if result.succeeded:
+                            succeeded += 1
+                        else:
+                            failed += 1
+                            errors.append(f"SKU {result.key}: {result.error_message}")
+
+                    logger.info(f"Upserted batch {i // batch_size + 1}: {len(batch)} products")
+
+                except Exception as e:
+                    failed += len(batch)
+                    errors.append(f"Batch {i // batch_size + 1} failed: {str(e)}")
+                    logger.error(f"Error upserting batch: {e}")
+
+        except Exception as e:
+            logger.error(f"Error during upsert: {e}")
+            errors.append(f"Upsert failed: {str(e)}")
+
+        return {"total": total, "succeeded": succeeded, "failed": failed, "errors": errors}
 
     def index_exists(self) -> bool:
         """
