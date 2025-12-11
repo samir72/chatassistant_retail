@@ -7,6 +7,8 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, ConfigDict, Field
 
+from chatassistant_retail.tools.context_utils import update_products_cache
+
 logger = logging.getLogger(__name__)
 
 
@@ -185,11 +187,29 @@ class LanggraphManager:
             # Retrieve products
             products = await self.rag_retriever.retrieve(query, top_k=5)
 
-            # Store in context
+            # Store in context (for backward compatibility)
             context = dict(state.context) if state.context else {}
             context["products"] = products
             context["rag_query"] = query
             logger.info(f"Retrieved {len(products)} products for query: {query}")
+
+            # Also populate products_cache for tool reuse
+            if products:
+                # Create a temporary state object to pass to update function
+                temp_state = ConversationState(
+                    messages=state.messages,
+                    context=context,
+                    tool_calls=state.tool_calls,
+                    session_id=state.session_id,
+                )
+                update_products_cache(
+                    temp_state,
+                    products=products,
+                    source="rag",
+                    filter_applied={"query": query},
+                )
+                # Update context with the cache
+                context = temp_state.context
 
             return {"context": context}
 
@@ -252,9 +272,9 @@ class LanggraphManager:
                 if isinstance(tool_args, str):
                     tool_args = json.loads(tool_args)
 
-                # Execute tool
+                # Execute tool with conversation state for context-aware data access
                 logger.info(f"Executing tool: {tool_name}")
-                tool_result = await self.tool_executor.execute_tool(tool_name, tool_args)
+                tool_result = await self.tool_executor.execute_tool(tool_name, tool_args, state=state)
 
                 tool_calls_data.append(
                     {

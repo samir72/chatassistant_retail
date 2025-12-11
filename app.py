@@ -32,7 +32,7 @@ logger.info("Starting Retail Inventory Assistant on HuggingFace Spaces")
 from chatassistant_retail.ui import gradio_app
 
 # Create and launch interface
-#demo = create_gradio_interface()
+# demo = create_gradio_interface()
 demo = gradio_app.create_gradio_interface()
 
 if __name__ == "__main__":

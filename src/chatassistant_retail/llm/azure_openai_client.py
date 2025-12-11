@@ -123,6 +123,96 @@ class AzureOpenAIClient:
 
         return await self.call_llm(messages=messages, tools=tools)
 
+    @trace(name="identify_product_from_image", trace_type="llm")
+    async def identify_product_from_image(
+        self,
+        image_path: str | Path,
+        context: str = "",
+    ) -> dict[str, Any] | None:
+        """
+        Identify product from image with structured output for inventory lookup.
+
+        This specialized method extracts product attributes optimized for
+        catalog search and inventory management.
+
+        Args:
+            image_path: Path to the product image
+            context: Optional context from user (e.g., "check inventory for this")
+
+        Returns:
+            Dictionary with product attributes:
+                - product_name: Product type and name
+                - category: Product category
+                - description: Detailed description
+                - color: Primary color(s)
+                - keywords: List of search keywords
+                - confidence: Confidence score (0.0 to 1.0)
+            Returns None if identification fails
+        """
+        import json
+
+        system_prompt = """You are a retail product identification specialist. Analyze the image and extract product information.
+
+Return ONLY a JSON object with these fields:
+- product_name: The type and name of the product (e.g., "Wireless Mouse", "Running Shoes")
+- category: One of: Electronics, Clothing, Groceries, Home & Garden, Sports & Outdoors, Books & Media, Toys & Games, Health & Beauty
+- description: Detailed description of the product
+- color: Primary color(s) of the product
+- keywords: Array of search keywords (3-5 keywords)
+- confidence: Your confidence level (0.0 to 1.0)
+
+Example:
+{
+    "product_name": "Wireless Mouse",
+    "category": "Electronics",
+    "description": "Black wireless optical mouse with ergonomic design",
+    "color": "black",
+    "keywords": ["wireless mouse", "computer mouse", "black mouse", "optical mouse"],
+    "confidence": 0.9
+}"""
+
+        try:
+            response = await self.process_multimodal(
+                text=context or "Identify this product for inventory lookup",
+                image_path=image_path,
+                system_prompt=system_prompt,
+            )
+
+            response_text = await self.extract_response_content(response)
+
+            # Parse JSON response
+            # Try to extract JSON from markdown code blocks if present
+            if "```json" in response_text:
+                json_str = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                json_str = response_text.split("```")[1].split("```")[0].strip()
+            else:
+                json_str = response_text.strip()
+
+            vision_data = json.loads(json_str)
+
+            # Validate required fields
+            required_fields = ["product_name", "category", "keywords"]
+            if not all(field in vision_data for field in required_fields):
+                logger.warning(f"Vision response missing required fields: {vision_data}")
+                return None
+
+            logger.info(
+                f"Identified product: {vision_data.get('product_name')} "
+                f"({vision_data.get('category')}) "
+                f"confidence: {vision_data.get('confidence', 0)}"
+            )
+
+            return vision_data
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse vision response as JSON: {e}")
+            logger.debug(f"Response text: {response_text if 'response_text' in locals() else 'N/A'}")
+            return None
+        except Exception as e:
+            logger.error(f"Error identifying product from image: {e}", exc_info=True)
+            return None
+
     def _encode_image(self, image_path: str | Path) -> str:
         """
         Encode image to base64 for API.
@@ -180,7 +270,7 @@ class AzureOpenAIClient:
                 return []
 
             message = choices[0].get("message", {})
-            tool_calls = message.get("tool_calls", [])
+            tool_calls = message.get("tool_calls") or []
 
             return [
                 {

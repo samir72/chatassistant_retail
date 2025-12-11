@@ -44,6 +44,9 @@
 ### Technical Features
 
 - **Multi-Modal Input Processing**: Handle both text and images (PNG, JPG, JPEG, WebP) for product analysis and visual queries
+- **Context Caching System**: Smart data reuse across conversation turns reduces redundant I/O operations and improves response times
+- **Image-Based Product Lookup**: Upload product images for AI-powered identification, catalog matching, and automated inventory checking
+- **Low-Stock Automation**: Automatic reorder recommendations when visually identified products are low in stock
 - **LangGraph Orchestration**: Stateful conversation management with persistent session storage
 - **Hybrid RAG Search**: Vector + keyword + semantic search via Azure Cognitive Search with automatic fallback to local data
 - **Flexible Session Persistence**: Three backend options - Memory (fast, ephemeral), Redis (distributed), or PostgreSQL (full persistence)
@@ -117,8 +120,10 @@ The chatbot follows an agentic architecture pattern using LangGraph for state ma
 
 - **Gradio UI** (`ui/`): Web-based chat interface with multi-modal input (text + images)
 - **LangGraph State Manager** (`state/`): Conversation state management with Memory/Redis/PostgreSQL session stores
+- **Workflow Orchestration** (`workflow/`): Image-based product lookup with multi-step automation (vision → search → inventory → recommendations)
+- **Context Utilities** (`tools/context_utils.py`): Smart caching layer for performance optimization and data coherence
 - **Azure OpenAI Client** (`llm/`): Multi-modal LLM integration (GPT-4o-mini) with prompt templates and response parsing
-- **Tools** (`tools/`): Inventory and purchase order tools exposed via MCP (Model Context Protocol) server
+- **Context-Aware Tools** (`tools/`): Inventory and purchase order tools with optional state parameter for intelligent cache reuse
 - **RAG System** (`rag/`): Hybrid search with Azure Cognitive Search (vector + keyword + semantic) and local fallback
 - **Observability** (`observability/`): LangFuse tracing and metrics collection across all components
 - **Data Models** (`data/`): Pydantic models for products, sales, and purchase orders with sample data generation
@@ -168,11 +173,16 @@ chatassistant_retail/
 │       │   ├── prompt_templates.py     # System/user prompts
 │       │   └── response_parser.py      # Response parsing
 │       │
+│       ├── workflow/               # NEW: Workflow orchestration
+│       │   ├── __init__.py
+│       │   └── image_processor.py  # Image-based product lookup
+│       │
 │       ├── tools/                # Inventory & PO tools
 │       │   ├── __init__.py
-│       │   ├── inventory_tools.py      # Inventory operations
-│       │   ├── purchase_order_tools.py # PO operations
-│       │   └── mcp_server.py           # MCP server setup
+│       │   ├── context_utils.py    # NEW: Context caching utilities
+│       │   ├── inventory_tools.py      # UPDATED: Context-aware inventory operations
+│       │   ├── purchase_order_tools.py # UPDATED: Context-aware PO operations
+│       │   └── mcp_server.py           # UPDATED: MCP server with state passing
 │       │
 │       ├── rag/                  # Azure Cognitive Search RAG
 │       │   ├── __init__.py
@@ -211,14 +221,18 @@ chatassistant_retail/
 ├── tests/
 │   ├── __init__.py
 │   ├── unit/                     # Unit tests
+│   │   ├── test_context_utils.py     # NEW: Context caching tests
+│   │   ├── test_image_processor.py   # NEW: Image workflow tests
 │   │   ├── test_observability.py
 │   │   ├── test_inventory_tools.py
 │   │   ├── test_session_store.py
 │   │   ├── test_retriever.py
 │   │   ├── test_azure_search_client.py
 │   │   ├── test_azure_openai_client.py
+│   │   ├── test_mcp_server.py
 │   │   └── test_data_generator.py
 │   ├── integration/              # Integration tests
+│   │   ├── test_tool_context_integration.py  # NEW: Context-aware tool tests
 │   │   └── test_state_manager.py
 │   └── test_chatassistant_retail.py  # Main tests
 │
@@ -507,6 +521,51 @@ Assistant: Analyzing the product image...
 [Tool: inventory_tools.check_stock_level(sku="SKU-12345")]
 Yes, this appears to be the same product as SKU-12345 (Blue Athletic Sneaker).
 Current stock: 85 units available across 2 warehouses.
+```
+
+#### Image-Based Product Workflow (NEW)
+```
+User: [Uploads product image] "Check inventory for this item"
+Assistant: Let me analyze the product image...
+
+[ImageProductProcessor workflow]
+- Vision Extraction: Identifies "Wireless Optical Mouse" (Electronics, confidence: 0.89)
+- Catalog Search: Finds 2 matching products via RAG
+- Inventory Check:
+  * SKU-10001: 50 units (adequate stock)
+  * SKU-10002: 8 units (below reorder level of 20)
+- Reorder Recommendation: Order 50 units of SKU-10002 (HIGH urgency, 5 days until stockout)
+
+Response:
+"🔍 Product Identification Results
+
+I identified: Wireless Optical Mouse
+Category: Electronics
+
+📦 Matching Products in Inventory:
+
+1. Wireless Optical Mouse (SKU-10001)
+   - Price: $24.99
+   - Current Stock: 50 units
+   - Reorder Level: 10 units
+   - Status: OK
+   - Supplier: TechSupplies Inc
+
+2. Ergonomic Wireless Mouse (SKU-10002)
+   - Price: $34.99
+   - Current Stock: 8 units
+   - Reorder Level: 20 units
+   - Status: LOW STOCK
+   - Supplier: ComfortTech
+
+💡 Recommendations:
+
+⚠️  Ergonomic Wireless Mouse (SKU-10002) is running low:
+   - Days until stockout: 5
+   - Suggested order quantity: 50 units
+   - Urgency: HIGH
+
+Would you like me to create a purchase order?"
 ```
 
 ---

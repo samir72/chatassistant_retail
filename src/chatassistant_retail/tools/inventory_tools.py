@@ -1,14 +1,47 @@
 """Inventory management tools implementation."""
 
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chatassistant_retail.data.models import Product, Sale
 from chatassistant_retail.observability import trace
+from chatassistant_retail.tools.context_utils import (
+    get_products_from_context,
+    get_sales_from_context,
+    update_products_cache,
+    update_sales_cache,
+)
+
+if TYPE_CHECKING:
+    from chatassistant_retail.state.langgraph_manager import ConversationState
 
 logger = logging.getLogger(__name__)
+
+
+def _products_to_dicts(products: list[Product]) -> list[dict]:
+    """Convert Product models to dictionaries for caching."""
+    return [
+        {
+            "sku": p.sku,
+            "name": p.name,
+            "category": p.category,
+            "price": p.price,
+            "current_stock": p.current_stock,
+            "reorder_level": p.reorder_level,
+            "supplier": p.supplier,
+            "description": p.description,
+        }
+        for p in products
+    ]
+
+
+def _dicts_to_products(product_dicts: list[dict]) -> list[Product]:
+    """Convert dictionaries back to Product models."""
+    return [Product(**p) for p in product_dicts]
 
 
 def _load_local_data() -> tuple[list[Product], list[Sale]]:
@@ -51,6 +84,7 @@ async def query_inventory_impl(
     category: str | None = None,
     low_stock: bool = False,
     threshold: int = 10,
+    state: ConversationState | None = None,
 ) -> dict[str, Any]:
     """
     Implementation of query_inventory tool.
@@ -60,11 +94,30 @@ async def query_inventory_impl(
         category: Optional category filter
         low_stock: Filter for low stock items
         threshold: Low stock threshold
+        state: Conversation state for context-aware data access
 
     Returns:
         Dictionary with inventory results
     """
-    products, _ = _load_local_data()
+    # Try to get products from context first
+    product_dicts = get_products_from_context(state, sku, category, low_stock, threshold)
+
+    if product_dicts is not None:
+        logger.info(f"Using {len(product_dicts)} products from context cache")
+        products = _dicts_to_products(product_dicts)
+    else:
+        # Fallback to loading fresh data
+        logger.info("Loading fresh product data from JSON")
+        products, _ = _load_local_data()
+
+        # Cache the loaded products for future use
+        if state and products:
+            update_products_cache(
+                state,
+                _products_to_dicts(products),
+                source="tool",
+                filter_applied={"sku": sku, "category": category, "low_stock": low_stock, "threshold": threshold},
+            )
 
     if not products:
         return {
@@ -125,6 +178,7 @@ async def calculate_reorder_point_impl(
     sku: str,
     lead_time_days: int = 7,
     safety_stock_multiplier: float = 1.5,
+    state: ConversationState | None = None,
 ) -> dict[str, Any]:
     """
     Implementation of calculate_reorder_point tool.
@@ -133,11 +187,30 @@ async def calculate_reorder_point_impl(
         sku: Product SKU
         lead_time_days: Supplier lead time
         safety_stock_multiplier: Safety stock multiplier
+        state: Conversation state for context-aware data access
 
     Returns:
         Dictionary with reorder point calculation
     """
-    products, sales = _load_local_data()
+    # Try to get products from context first
+    product_dicts = get_products_from_context(state, sku=sku)
+
+    if product_dicts is not None:
+        logger.info(f"Using {len(product_dicts)} products from context cache")
+        products = _dicts_to_products(product_dicts)
+    else:
+        # Fallback to loading fresh data
+        logger.info("Loading fresh product data from JSON")
+        products, sales_data = _load_local_data()
+
+        # Cache the loaded products for future use
+        if state and products:
+            update_products_cache(
+                state,
+                _products_to_dicts(products),
+                source="tool",
+                filter_applied={"sku": sku},
+            )
 
     # Find the product
     product = next((p for p in products if p.sku == sku), None)
@@ -146,6 +219,34 @@ async def calculate_reorder_point_impl(
             "success": False,
             "message": f"Product not found: {sku}",
         }
+
+    # Try to get sales from context
+    sales_dicts = get_sales_from_context(state, sku=sku)
+
+    if sales_dicts is not None:
+        logger.info(f"Using {len(sales_dicts)} sales records from context cache")
+        sales = [Sale(**s) for s in sales_dicts]
+    else:
+        # Fallback to loading fresh sales data
+        logger.info("Loading fresh sales data from JSON")
+        if "sales_data" not in locals():
+            _, sales_data = _load_local_data()
+        sales = sales_data
+
+        # Cache the loaded sales for future use
+        if state and sales:
+            sales_dicts_for_cache = [
+                {
+                    "sale_id": s.sale_id,
+                    "sku": s.sku,
+                    "quantity": s.quantity,
+                    "sale_price": s.sale_price,
+                    "timestamp": s.timestamp.isoformat(),
+                    "channel": s.channel,
+                }
+                for s in sales
+            ]
+            update_sales_cache(state, sales_dicts_for_cache, sku_filter=sku)
 
     # Filter sales for this product
     product_sales = [s for s in sales if s.sku == sku]

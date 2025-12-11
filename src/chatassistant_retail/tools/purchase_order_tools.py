@@ -1,16 +1,47 @@
 """Purchase order creation tools implementation."""
 
+from __future__ import annotations
+
 import json
 import logging
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chatassistant_retail.data.models import Product, PurchaseOrder
 from chatassistant_retail.observability import trace
+from chatassistant_retail.tools.context_utils import (
+    get_products_from_context,
+    update_products_cache,
+)
+
+if TYPE_CHECKING:
+    from chatassistant_retail.state.langgraph_manager import ConversationState
 
 logger = logging.getLogger(__name__)
+
+
+def _products_to_dicts(products: list[Product]) -> list[dict]:
+    """Convert Product models to dictionaries for caching."""
+    return [
+        {
+            "sku": p.sku,
+            "name": p.name,
+            "category": p.category,
+            "price": p.price,
+            "current_stock": p.current_stock,
+            "reorder_level": p.reorder_level,
+            "supplier": p.supplier,
+            "description": p.description,
+        }
+        for p in products
+    ]
+
+
+def _dicts_to_products(product_dicts: list[dict]) -> list[Product]:
+    """Convert dictionaries back to Product models."""
+    return [Product(**p) for p in product_dicts]
 
 
 def _load_products() -> list[Product]:
@@ -73,6 +104,7 @@ async def create_purchase_order_impl(
     sku: str,
     quantity: int,
     expected_delivery_date: str | None = None,
+    state: ConversationState | None = None,
 ) -> dict[str, Any]:
     """
     Implementation of create_purchase_order tool.
@@ -81,11 +113,30 @@ async def create_purchase_order_impl(
         sku: Product SKU
         quantity: Order quantity
         expected_delivery_date: Optional delivery date (ISO format)
+        state: Conversation state for context-aware data access
 
     Returns:
         Dictionary with purchase order confirmation
     """
-    products = _load_products()
+    # Try to get products from context first
+    product_dicts = get_products_from_context(state, sku=sku)
+
+    if product_dicts is not None:
+        logger.info(f"Using {len(product_dicts)} products from context cache")
+        products = _dicts_to_products(product_dicts)
+    else:
+        # Fallback to loading fresh data
+        logger.info("Loading fresh product data from JSON")
+        products = _load_products()
+
+        # Cache the loaded products for future use
+        if state and products:
+            update_products_cache(
+                state,
+                _products_to_dicts(products),
+                source="tool",
+                filter_applied={"sku": sku},
+            )
 
     # Find the product
     product = next((p for p in products if p.sku == sku), None)

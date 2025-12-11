@@ -58,9 +58,7 @@ class TestToolExecutor:
     async def test_execute_create_purchase_order_tool(self):
         """Test executing create_purchase_order tool."""
         executor = ToolExecutor()
-        result = await executor.execute_tool(
-            "create_purchase_order", {"sku": "SKU-10000", "quantity": 100}
-        )
+        result = await executor.execute_tool("create_purchase_order", {"sku": "SKU-10000", "quantity": 100})
 
         assert result["success"] is True
         # Check for either purchase order creation or error response

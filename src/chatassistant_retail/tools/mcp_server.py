@@ -1,11 +1,17 @@
 """FastMCP server setup for inventory management tools."""
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 
 from fastmcp import FastMCP
 
 from .inventory_tools import calculate_reorder_point_impl, query_inventory_impl
 from .purchase_order_tools import create_purchase_order_impl
+
+if TYPE_CHECKING:
+    from chatassistant_retail.state.langgraph_manager import ConversationState
 
 logger = logging.getLogger(__name__)
 
@@ -99,13 +105,14 @@ class ToolExecutor:
         }
         logger.info(f"Initialized ToolExecutor with {len(self.tools)} tools")
 
-    async def execute_tool(self, tool_name: str, args: dict) -> dict:
+    async def execute_tool(self, tool_name: str, args: dict, state: ConversationState | None = None) -> dict:
         """
         Execute a tool by name.
 
         Args:
             tool_name: Name of the tool to execute
             args: Tool arguments
+            state: Conversation state for context-aware data access
 
         Returns:
             Tool execution result
@@ -120,7 +127,8 @@ class ToolExecutor:
 
         try:
             tool_func = self.tools[tool_name]
-            result = await tool_func(**args)
+            # Pass state parameter to tool function
+            result = await tool_func(**args, state=state)
             logger.info(f"Successfully executed tool: {tool_name}")
             return result
         except Exception as e:

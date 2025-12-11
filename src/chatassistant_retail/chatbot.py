@@ -121,22 +121,29 @@ class RetailChatBot:
 
             # Handle multi-modal input
             if image:
-                # Use multi-modal LLM for image + text
-                response = await self.llm_client.process_multimodal(
-                    text=text,
-                    image_path=image,
-                    system_prompt="You are a helpful retail inventory assistant with vision capabilities.",
-                )
-
-                # Extract response text
-                response_text = await self.llm_client.extract_response_content(response)
-
-                # Create simple state for multi-modal
+                # Use image product processor for inventory-focused analysis
                 from langchain_core.messages import AIMessage
 
+                from chatassistant_retail.workflow.image_processor import ImageProductProcessor
+
+                processor = ImageProductProcessor()
+                response_data = await processor.process_image_query(
+                    image_path=image,
+                    user_text=text,
+                    llm_client=self.llm_client,
+                    rag_retriever=self.rag_retriever,
+                    tool_executor=self.tool_executor,
+                )
+
+                # Update state with structured response
                 state.messages.append(HumanMessage(content=f"{text} [with image]"))
-                state.messages.append(AIMessage(content=response_text))
-                state.current_intent = "direct"
+                state.messages.append(AIMessage(content=response_data["response"]))
+                state.current_intent = "tool"
+                state.needs_tool = True
+                state.context = response_data.get("context", {})
+                state.tool_calls = response_data.get("tool_calls", [])
+                if response_data.get("error"):
+                    state.error = response_data["error"]
 
             else:
                 # Add user message to state

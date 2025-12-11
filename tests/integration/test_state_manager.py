@@ -1,7 +1,5 @@
 """Integration tests for Langgraph state manager."""
 
-from unittest.mock import MagicMock
-
 import pytest
 from langchain_core.messages import HumanMessage
 

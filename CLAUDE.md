@@ -85,6 +85,115 @@ When implementing the chatbot, consider:
 - Integration with retail inventory systems
 - Appropriate authentication/authorization for API access
 
+### Current Architecture - Context-Aware System
+
+The chatbot now implements a context-aware architecture that reduces redundant data loading and improves performance:
+
+#### Context Caching System
+
+**Location:** `src/chatassistant_retail/tools/context_utils.py`
+
+The context caching system allows tools to reuse data that has already been retrieved during the conversation, rather than reloading it from JSON files every time.
+
+**Key Functions:**
+- `get_products_from_context()` - Retrieves cached product data with smart filtering
+- `get_sales_from_context()` - Retrieves cached sales history data
+- `update_products_cache()` - Updates product cache with metadata
+- `update_sales_cache()` - Updates sales cache with metadata
+
+**How It Works:**
+
+```python
+# Example: Tool checks context before loading fresh data
+from chatassistant_retail.tools.context_utils import get_products_from_context
+
+def query_inventory(sku: str, state: ConversationState | None = None):
+    # Try context cache first
+    cached = get_products_from_context(state, sku=sku)
+    if cached:
+        return cached  # Reuse data already in conversation
+
+    # Fallback: load from JSON
+    products = load_products_from_file()
+
+    # Cache for future use
+    if state:
+        update_products_cache(state, products, source="tool")
+
+    return products
+```
+
+**Data Flow:**
+
+```
+User Query → RAG Retrieves Products → Cached in state.context
+                                              ↓
+User Follow-up → Tool Checks Cache → Reuses Cached Data ✓
+                       ↓ (if not found)
+                 Load from JSON → Cache → Return
+```
+
+**Benefits:**
+- **Performance:** Reduces redundant JSON file I/O operations
+- **Context Coherence:** Ensures tools work with same data user is discussing
+- **Token Efficiency:** Reduces LLM context size by reusing retrieved data
+- **Backward Compatible:** Tools work with or without state parameter
+
+#### Image-Based Product Workflow
+
+**Location:** `src/chatassistant_retail/workflow/image_processor.py`
+
+The `ImageProductProcessor` class orchestrates a complete workflow for visual product queries:
+
+**Workflow Steps:**
+
+1. **Vision Extraction** - Identify product from image using GPT-4o Vision
+   - Extracts: product_name, category, description, color, keywords
+   - Returns confidence score (0.0 to 1.0)
+   - Minimum confidence threshold: 0.3
+
+2. **Catalog Search** - Search product database using RAG
+   - Uses extracted keywords for hybrid search
+   - Returns top 5 matching products
+   - Filters by confidence threshold
+
+3. **Inventory Check** - Query inventory status for matches
+   - Checks stock levels for each matched product
+   - Compares against reorder levels
+   - Flags low-stock items
+
+4. **Reorder Recommendations** - Calculate purchase orders for low stock
+   - Determines order quantity based on sales velocity
+   - Estimates days until stockout
+   - Assigns urgency level (LOW/MEDIUM/HIGH)
+
+**Architecture Diagram:**
+
+```
+Image Upload → Vision Extraction → Catalog Search → Inventory Check → Response
+     ↓              ↓                    ↓                 ↓             ↓
+ User Photo    Product Info        RAG Retriever      Tool Calls    Formatted
+  (PNG/JPG)   (name, category)   (hybrid search)   (check_stock)   Response
+               (confidence)         (top 5 SKUs)    (reorder calc)  (with recs)
+```
+
+**Example Use Case:**
+
+User uploads photo of wireless mouse → AI identifies "Wireless Optical Mouse, Electronics" → Searches catalog → Finds 2 matches → Checks inventory → SKU-10001: 50 units (OK), SKU-10002: 8 units (LOW) → Recommends ordering 50 units of SKU-10002
+
+#### Context-Aware Tools
+
+All tools in `src/chatassistant_retail/tools/` now support an optional `state: ConversationState | None = None` parameter:
+
+**Modified Files:**
+- `inventory_tools.py` - Query inventory, calculate reorder points
+- `purchase_order_tools.py` - Create and manage purchase orders
+- `mcp_server.py` - ToolExecutor passes state to tool functions
+
+**Backward Compatibility:** Tools function normally without the state parameter, falling back to loading fresh data from files.
+
+**Integration Point:** The LangGraph state manager's tool node passes conversation state to ToolExecutor, which forwards it to tool implementations.
+
 ## Tools Configuration
 
 ### Ruff (Linting & Formatting)

@@ -86,9 +86,7 @@ class TestAzureOpenAIClient:
         """Test extracting tool calls when response has none."""
         client = AzureOpenAIClient()
 
-        response = {
-            "choices": [{"message": {"role": "assistant", "content": "Hello, how can I help you?"}}]
-        }
+        response = {"choices": [{"message": {"role": "assistant", "content": "Hello, how can I help you?"}}]}
 
         tool_calls = await client.extract_tool_calls(response)
 
@@ -117,13 +115,35 @@ class TestAzureOpenAIClient:
         assert len(tool_calls) == 0
 
     @pytest.mark.asyncio
+    async def test_extract_tool_calls_with_null_tool_calls(self):
+        """Test extraction when tool_calls is explicitly null (not missing)."""
+        client = AzureOpenAIClient()
+
+        # This can happen when Azure OpenAI returns tool_calls: null
+        # instead of omitting the key or returning an empty array
+        response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "I'll help with that.",
+                        "tool_calls": None,  # Explicit null value
+                    }
+                }
+            ]
+        }
+
+        tool_calls = await client.extract_tool_calls(response)
+
+        assert tool_calls == []
+        assert isinstance(tool_calls, list)
+
+    @pytest.mark.asyncio
     async def test_extract_response_content_with_valid_response(self):
         """Test extracting text content from response."""
         client = AzureOpenAIClient()
 
-        response = {
-            "choices": [{"message": {"role": "assistant", "content": "Here are the products you requested."}}]
-        }
+        response = {"choices": [{"message": {"role": "assistant", "content": "Here are the products you requested."}}]}
 
         content = await client.extract_response_content(response)
 

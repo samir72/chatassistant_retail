@@ -12,6 +12,7 @@ from chatassistant_retail.ui.chat_interface import (
     format_error_message,
     get_welcome_message,
 )
+
 # Metrics imports commented out - keeping backend code for future re-enablement
 # from chatassistant_retail.ui.metrics_dashboard import (
 #     format_activity_log,
