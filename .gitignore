@@ -2,7 +2,8 @@
 
 # Data folder - now tracked in version control for convenient setup
 # data/
-
+# Scratch files
+Scratchpad/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

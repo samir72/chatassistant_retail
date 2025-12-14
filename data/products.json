@@ -5496,18 +5496,7 @@
     "current_stock": 0,
     "reorder_level": 49,
     "supplier": "Strickland-Wilson",
-    "description": "Carry message later a poor get.\nSubject ball tell argue ever anything speak concern. Simply help southern during. Never alone defense vote point they color. Me laugh however down single evening.",
+    "description": "Example product description update here. Sample text for product description update.\nAnother line of description text here. More details about the product can go here.",
     "image_url": "https://placeholder.co/400x400?text=Doll"
-  },
-  {
-    "sku": "SKU-10500",
-    "name": "Wireless Headphones (Black)",
-    "category": "Electronics",
-    "price": 15.74,
-    "current_stock": 10,
-    "reorder_level": 4,
-    "supplier": "Apple",
-    "description": "Sample data created for testing purposes.",
-    "image_url": "https://placeholder.co/400x400?text=Wireless+Headphones"
   }
 ]
