@@ -5,9 +5,6 @@
 
 **chatassistant_retail** is a production-ready conversational AI chatbot designed specifically for the retail industry, providing intelligent assistance for retail inventory management. It features a multi-modal interface (text + images) powered by Azure OpenAI GPT-4o-mini, hybrid RAG search with Azure Cognitive Search, stateful conversation management via LangGraph, and flexible session persistence (Memory/Redis/PostgreSQL). The system includes a Gradio-based web UI, MCP tool integration, and comprehensive observability with LangFuse.
 
-* PyPI package: https://pypi.org/project/chatassistant_retail/
-* Free software: MIT License
-* Documentation: https://chatassistant_retail.readthedocs.io
 * Python Version: >= 3.10 (tested on 3.10, 3.11, 3.12, and 3.13)
 
 ---
@@ -1591,9 +1588,3 @@ This package was created with [Cookiecutter](https://github.com/audreyfeldroy/co
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-## Support
-
-- **Documentation**: https://chatassistant_retail.readthedocs.io
-- **Issues**: https://github.com/samir72/chatassistant_retail/issues
-- **Discussions**: https://github.com/samir72/chatassistant_retail/discussions
